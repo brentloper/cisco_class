@@ -3,6 +3,7 @@
 import xmltodict
 import json
 from device import Device
+#from cli import *
 
 def show_dev_version(sw):
     getdata = sw.show('show version')
@@ -20,20 +21,42 @@ def show_dev_version(sw):
     return dev_ver_dict
 
 def check_version(sw):
-    desired_ver = 'nxos.7.1.3.1.bin'
+    desired_9k_ver = 'nxos.7.1.3.1.bin'
+    desired_6k_ver = 'nxos.7.0.3.I3.1.bin'
+    
     current_ver_data = show_dev_version(sw)
-    current_ver = current_ver_data['Bootfile']
+    current_ver_raw = current_ver_data['Bootfile']
+    current_ver = current_ver_raw.strip('bootflash:///')
 
-#    print current_ver
+    current_model_raw = current_ver_data['Model']
+    current_model = current_model_raw.split(' ')[0]
 
-    if desired_ver == current_ver:
-        print 'Version is acceptable, moving to next step.'
+    current_model = 'Nexus6000'
 
-    print 'Version requires upgrading, beginning version upgrade process.'
+    if desired_6k_ver == current_ver and current_model == 'Nexus6000':
+        print 'Current 6K version is acceptable, moving to next step.'
+        upgrade_check = False
+    elif desired_6k_ver != current_ver and current_model =='Nexus6000':
+        print 'Current 6K version requires upgrading, beginning version upgrade process.'
+        upgrade_check = True
+    elif desired_9k_ver == current_ver and current_model == 'Nexus9000':
+        print 'Current 9K version is acceptable, moving to next step.'
+        upgrade_check = False
+    elif desired_9k_ver != current_ver and current_model == 'Nexus9000':
+        print 'Current 9K version requires upgrading, beginning version upgrade process.'
+        upgrade_check = True
+
+    if upgrade_check == True:
+        try:
+            cli('copy bootflash:/testcode/imagetest.bin bootflash:imagetest.bin')
+            print 'Copying System Image...'
+        except:
+            print 'Oh Poop! Something went wrong, probably Brents fault'
+            exit(0)
 
 def main():
 
-    switch = Device(ip='172.31.217.133', username='admin', password='cisco123')
+    switch = Device(ip='172.31.217.134', username='admin', password='cisco123')
     switch.open()
 
     ver = show_dev_version(switch)
@@ -41,10 +64,6 @@ def main():
     print json.dumps(ver, indent=4)
 
     ver_check = check_version(switch)
-
-    print json.dumps(ver_check, indent=4)
-
-
 
 if __name__ == "__main__":
     main()
